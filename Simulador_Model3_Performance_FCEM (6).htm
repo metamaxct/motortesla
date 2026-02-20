@@ -1,0 +1,3149 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Motor Tesla Model 3 Performance - IPM con FCEM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --cyan: #00ffc8;
+            --cyan-dark: #00a8ff;
+            --green: #22c55e;
+            --orange: #f97316;
+            --red: #ef4444;
+            --purple: #a855f7;
+            --yellow: #eab308;
+            --bg-dark: #0a0a0f;
+            --bg-card: rgba(20, 20, 30, 0.8);
+            --border: #2a2a3a;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1a 100%);
+            color: #e5e5e5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .logo-icon.active {
+            box-shadow: 0 0 30px rgba(0, 255, 200, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 200, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(0, 255, 200, 0.8); }
+        }
+
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            stroke: #666;
+            transition: stroke 0.3s ease;
+        }
+
+        .logo-icon.active svg {
+            stroke: var(--cyan);
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--cyan), var(--cyan-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-text p {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .power-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .power-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-card);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: 2px solid var(--border);
+        }
+
+        .power-btn:hover {
+            background: rgba(40, 40, 60, 0.8);
+        }
+
+        .power-btn.active {
+            background: var(--green);
+            border-color: var(--green);
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);
+        }
+
+        .power-btn svg {
+            width: 28px;
+            height: 28px;
+            stroke: #666;
+            transition: stroke 0.3s ease;
+        }
+
+        .power-btn.active svg {
+            stroke: white;
+        }
+
+        .status {
+            text-align: right;
+        }
+
+        .status-label {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .status-value {
+            font-size: 1rem;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .status-value.on {
+            color: var(--green);
+            animation: blink 1s infinite;
+        }
+
+        .status-value.off {
+            color: var(--red);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: var(--cyan);
+            font-size: 1rem;
+        }
+
+        .card-title svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Motor Visualization */
+        .motor-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            max-height: 400px;
+        }
+
+        .motor-svg {
+            width: 100%;
+            height: 100%;
+            transition: filter 0.3s ease;
+        }
+
+        .motor-svg.active {
+            filter: drop-shadow(0 0 20px rgba(0, 255, 200, 0.3));
+        }
+
+        .motor-specs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .spec-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+        }
+
+        .spec-label {
+            color: #666;
+        }
+
+        .spec-value {
+            color: var(--cyan);
+            margin-left: 5px;
+        }
+
+        /* Component Comments */
+        .component-legend {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .legend-title {
+            font-size: 0.9rem;
+            color: var(--cyan);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border-left: 3px solid;
+        }
+
+        .legend-item.copper { border-color: #b87333; }
+        .legend-item.stator { border-color: #4a4a6a; }
+        .legend-item.rotor { border-color: var(--cyan); }
+        .legend-item.magnet-n { border-color: #ff4444; }
+        .legend-item.magnet-s { border-color: #4444ff; }
+        .legend-item.airgap { border-color: #888; }
+        .legend-item.shaft { border-color: #666; }
+        .legend-item.field { border-color: rgba(0, 255, 200, 0.5); }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .legend-text h5 {
+            font-size: 0.8rem;
+            color: #ddd;
+            margin-bottom: 3px;
+        }
+
+        .legend-text p {
+            font-size: 0.7rem;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        /* Rotor Animation */
+        .rotor-group {
+            transform-origin: 200px 200px;
+            transition: transform 0.1s linear;
+        }
+
+        .rotor-group.spinning {
+            animation: spin var(--spin-duration, 2s) linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Field Lines Animation */
+        .field-line {
+            stroke-dasharray: 10, 5;
+            animation: fieldFlow 1s linear infinite;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .field-line.active {
+            opacity: 0.6;
+        }
+
+        @keyframes fieldFlow {
+            from { stroke-dashoffset: 0; }
+            to { stroke-dashoffset: -30; }
+        }
+
+        /* Controls */
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .control-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .control-label svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .control-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .control-comment {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            border-left: 3px solid var(--cyan);
+        }
+
+        /* Voltage Slider */
+        .voltage-slider {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(90deg, #2a2a3a 0%, #2a2a3a 100%);
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .voltage-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--cyan), var(--cyan-dark));
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 200, 0.5);
+            transition: transform 0.2s ease;
+        }
+
+        .voltage-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: 2px solid var(--border);
+            background: transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+        }
+
+        .mode-btn:hover {
+            border-color: #555;
+        }
+
+        .mode-btn.active.eco {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(34, 197, 94, 0.1);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+        }
+
+        .mode-btn.active.normal {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        }
+
+        .mode-btn.active.sport {
+            border-color: var(--red);
+            color: var(--red);
+            background: rgba(239, 68, 68, 0.1);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+        }
+
+        .mode-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .mode-btn span {
+            font-size: 0.75rem;
+        }
+
+        /* Throttle */
+        .throttle-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 30px;
+        }
+
+        .throttle-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .throttle-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .throttle-pedal {
+            width: 70px;
+            height: 140px;
+            background: linear-gradient(180deg, #2a2a3a 0%, #1a1a2e 100%);
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .throttle-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(0deg, var(--cyan) 0%, rgba(0, 255, 200, 0.3) 100%);
+            transition: height 0.1s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 200, 0.5);
+        }
+
+        .throttle-pedal::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            border-top: 2px solid #444;
+        }
+
+        .throttle-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            color: var(--cyan);
+        }
+
+        .throttle-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .throttle-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            color: #888;
+        }
+
+        .throttle-btn:hover:not(:disabled) {
+            background: #2a2a3a;
+            color: var(--cyan);
+        }
+
+        .throttle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .throttle-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Battery & Temp */
+        .status-gauges {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .status-gauge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-gauge svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        .status-gauge .value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .status-gauge .label {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .battery-low { color: var(--red); }
+        .battery-medium { color: var(--yellow); }
+        .battery-high { color: var(--green); }
+        .temp-high { color: var(--red); }
+        .temp-medium { color: var(--orange); }
+        .temp-normal { color: var(--cyan); }
+
+        /* Current Display */
+        .current-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .current-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .current-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--orange);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #1a1a2e;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--orange), var(--yellow));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+        }
+
+        /* Dashboard */
+        .dashboard-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Circular Gauges */
+        .gauge-row {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+        }
+
+        .circular-gauge {
+            position: relative;
+            width: 110px;
+            height: 130px;
+        }
+
+        .circular-gauge svg {
+            width: 100%;
+            height: 100px;
+            transform: rotate(-90deg);
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: #1a1a2e;
+            stroke-width: 8;
+        }
+
+        .gauge-fill {
+            fill: none;
+            stroke: url(#gaugeGradient);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+            filter: drop-shadow(0 0 6px rgba(0, 255, 200, 0.6));
+        }
+
+        .gauge-inner {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        .gauge-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--cyan);
+        }
+
+        .gauge-unit {
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        .gauge-label {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: #888;
+            white-space: nowrap;
+        }
+
+        /* Linear Gauges */
+        .linear-gauge {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .linear-gauge-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .linear-gauge-header svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .linear-gauge-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .linear-gauge-value {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .linear-gauge-number {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .linear-gauge-unit {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .linear-gauge-bar {
+            height: 8px;
+            background: #1a1a2e;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .linear-gauge-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .linear-gauge-fill.cyan {
+            background: linear-gradient(90deg, var(--cyan), var(--cyan-dark));
+            box-shadow: 0 0 15px rgba(0, 255, 200, 0.4);
+        }
+
+        .linear-gauge-fill.orange {
+            background: linear-gradient(90deg, var(--orange), var(--yellow));
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-card svg {
+            width: 20px;
+            height: 20px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #666;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .info-panel.visible {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .info-section h4 {
+            color: var(--cyan);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        .info-section h4 svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .info-section p {
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .info-section ul {
+            list-style: none;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .info-section li {
+            margin-bottom: 8px;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .info-section li::before {
+            content: '•';
+            color: var(--cyan);
+            position: absolute;
+            left: 0;
+        }
+
+        .info-section strong {
+            color: #ddd;
+        }
+
+        .formula-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .formula-box p {
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+
+        .mode-comparison {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .mode-box {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .mode-box.eco {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .mode-box.normal {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .mode-box.sport {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .mode-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .mode-box p {
+            font-size: 0.75rem;
+            margin: 0;
+        }
+
+        .info-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            color: #888;
+            transition: all 0.2s ease;
+        }
+
+        .info-btn:hover {
+            background: var(--bg-card);
+            color: var(--cyan);
+        }
+
+        .info-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* ── Freno Regenerativo ── */
+        .regen-section {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+        }
+
+        .regen-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .regen-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #22c55e;
+        }
+
+        .regen-label svg { width: 16px; height: 16px; }
+
+        .regen-pedal-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+        }
+
+        .brake-pedal-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brake-pedal {
+            width: 70px;
+            height: 140px;
+            background: linear-gradient(180deg, #1a0a0a 0%, #0a1a0a 100%);
+            border-radius: 10px;
+            border: 2px solid #2a2a3a;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+            user-select: none;
+            transition: border-color 0.2s;
+        }
+
+        .brake-pedal:hover { border-color: #22c55e; }
+
+        .brake-pedal-fill {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(0deg, #22c55e 0%, rgba(34,197,94,0.25) 100%);
+            transition: height 0.1s ease;
+            box-shadow: 0 0 20px rgba(34,197,94,0.4);
+        }
+
+        .brake-pedal-label {
+            font-size: 0.75rem;
+            color: #22c55e;
+            text-align: center;
+        }
+
+        .brake-pedal-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            color: #22c55e;
+        }
+
+        .regen-info-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .regen-level-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .regen-btn {
+            flex: 1;
+            padding: 9px 6px;
+            border: 2px solid var(--border);
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #666;
+            font-size: 0.75rem;
+            transition: all 0.25s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .regen-btn svg { width: 16px; height: 16px; }
+
+        .regen-btn:hover { border-color: #22c55e; color: #22c55e; }
+
+        .regen-btn.active {
+            border-color: #22c55e;
+            color: #22c55e;
+            background: rgba(34,197,94,0.12);
+            box-shadow: 0 0 14px rgba(34,197,94,0.2);
+        }
+
+        /* Regen energy flow indicator */
+        .regen-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .regen-flow.active {
+            border-color: #22c55e;
+            background: rgba(34,197,94,0.08);
+        }
+
+        .regen-flow-arrow {
+            font-size: 1.1rem;
+            animation: arrowFlow 0.8s ease-in-out infinite;
+        }
+
+        @keyframes arrowFlow {
+            0%,100% { opacity: 0.3; transform: translateX(0); }
+            50%      { opacity: 1;   transform: translateX(-4px); }
+        }
+
+        .regen-power-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #22c55e;
+            margin-left: auto;
+        }
+
+        /* Generator mode glow on motor SVG */
+        .motor-svg.generator {
+            filter: drop-shadow(0 0 18px rgba(34,197,94,0.45)) !important;
+        }
+
+        /* Energy flow badge on status */
+        .mode-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .mode-badge.motor   { background: rgba(0,255,200,0.2); color: #00ffc8; border:1px solid #00ffc8; }
+        .mode-badge.regen   { background: rgba(34,197,94,0.2); color: #22c55e; border:1px solid #22c55e; }
+        .mode-badge.coasting{ background: rgba(100,100,120,0.3); color: #888; border:1px solid #444; }
+
+        /* Tesla Tech Specs */
+        .tesla-specs {
+            margin-top: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(20, 20, 30, 0.5));
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 200, 0.2);
+        }
+
+        .tesla-specs h4 {
+            color: var(--cyan);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tesla-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #cc0000, #ff3333);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .tesla-info {
+            font-size: 0.75rem;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .tesla-info p {
+            margin-bottom: 8px;
+        }
+
+        .tesla-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .tesla-feature {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+        }
+
+        .tesla-feature strong {
+            color: var(--cyan);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #444;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .power-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .throttle-section {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mode-comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .legend-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tesla-features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon" id="logoIcon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>Tesla Model 3 Performance — Motor IPM con FCEM</h1>
+                    <p>Simulación realista: Torque vs RPM con Fuerza Contraelectromotriz</p>
+                </div>
+            </div>
+            <div class="power-controls">
+                <button class="info-btn" id="infoBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </button>
+                <button class="power-btn" id="powerBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                        <line x1="12" y1="2" x2="12" y2="12"></line>
+                    </svg>
+                </button>
+                <div class="status">
+                    <div class="status-label">Estado</div>
+                    <div class="status-value off" id="statusValue">APAGADO</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Motor Visualization -->
+            <div class="card">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Motor IPM (Interior Permanent Magnet) - Estilo Tesla
+                </div>
+                <div class="motor-container">
+                    <svg class="motor-svg" id="motorSvg" viewBox="0 0 400 400" style="filter: none;">
+                        <defs>
+                            <!-- Rotor core gradient (laminated steel) -->
+                            <radialGradient id="rotorGradient" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#2a3a4a"></stop>
+                                <stop offset="100%" stop-color="#1a2a3a"></stop>
+                            </radialGradient>
+                            
+                            <!-- Stator gradient -->
+                            <linearGradient id="statorGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#3a3a5a"></stop>
+                                <stop offset="100%" stop-color="#2a2a4a"></stop>
+                            </linearGradient>
+                            
+                            <!-- Copper winding gradient -->
+                            <linearGradient id="copperGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#b87333"></stop>
+                                <stop offset="50%" stop-color="#da8a47"></stop>
+                                <stop offset="100%" stop-color="#b87333"></stop>
+                            </linearGradient>
+                            
+                            <!-- North pole magnet (red) -->
+                            <linearGradient id="magnetNorth" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#cc3333"></stop>
+                                <stop offset="50%" stop-color="#ff4444"></stop>
+                                <stop offset="100%" stop-color="#cc3333"></stop>
+                            </linearGradient>
+                            
+                            <!-- South pole magnet (blue) -->
+                            <linearGradient id="magnetSouth" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#3333cc"></stop>
+                                <stop offset="50%" stop-color="#4444ff"></stop>
+                                <stop offset="100%" stop-color="#3333cc"></stop>
+                            </linearGradient>
+                            
+                            <!-- Gauge gradient -->
+                            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#00ffc8"></stop>
+                                <stop offset="100%" stop-color="#00a8ff"></stop>
+                            </linearGradient>
+                            
+                            <!-- Shaft gradient -->
+                            <radialGradient id="shaftGradient" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#4a4a5a"></stop>
+                                <stop offset="100%" stop-color="#2a2a3a"></stop>
+                            </radialGradient>
+                        </defs>
+                        
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <!-- STATOR - Parte fija externa con bobinas de cobre            -->
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        
+                        <!-- Outer casing (carcasa exterior) -->
+                        <circle cx="200" cy="200" r="180" fill="url(#statorGradient)" stroke="#4a4a6a" stroke-width="8"></circle>
+                        
+                        <!-- Stator teeth with copper windings (dientes del estator con bobinas) -->
+                        <g id="statorCoils"><g transform="rotate(0, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(30, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(60, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(90, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(120, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(150, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(180, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(210, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(240, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(270, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(300, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g><g transform="rotate(330, 200, 200)"><rect x="192" y="25" width="16" height="55" rx="4" fill="url(#copperGradient)" stroke="#8b4513" stroke-width="1"></rect><rect x="196" y="80" width="8" height="45" fill="#3a3a5a"></rect></g></g>
+                        
+                        <!-- Stator inner surface (superficie interior del estator) -->
+                        <circle cx="200" cy="200" r="128" fill="none" stroke="#3a3a5a" stroke-width="2"></circle>
+                        
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <!-- AIR GAP - Espacio de aire entre estator y rotor            -->
+                        <!-- El campo magnético cruza esta zona                                        -->
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <circle cx="200" cy="200" r="126" fill="none" stroke="rgba(0, 255, 200, 0.3)" stroke-width="2" stroke-dasharray="4,4" class="air-gap"></circle>
+                        
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <!-- ROTOR - Parte móvil con imanes internos (configuración IPM) -->
+                        <!-- Similar a motores Tesla Model 3/Y                              -->
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <g class="rotor-group" id="rotorGroup" style="--spin-duration: 1.0381217591732228e+23s;">
+                            
+                            <!-- Rotor core - núcleo de acero laminado -->
+                            <circle cx="200" cy="200" r="120" fill="url(#rotorGradient)" stroke="#00ffc8" stroke-width="3"></circle>
+                            
+                            <!-- Interior Permanent Magnets in V-shape configuration -->
+                            <!-- Configuración de imanes en V - típica de Tesla -->
+                            <g id="ipmMagnets"><g transform="rotate(-17.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(17.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(27.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g><g transform="rotate(62.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g><g transform="rotate(72.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(107.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(117.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g><g transform="rotate(152.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g><g transform="rotate(162.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(197.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(207.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g><g transform="rotate(242.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g><g transform="rotate(252.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(287.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetNorth)" opacity="0.9"></rect></g><g transform="rotate(297.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g><g transform="rotate(332.5, 200, 200)"><rect x="194" y="70" width="12" height="35" rx="2" fill="url(#magnetSouth)" opacity="0.9"></rect></g></g>
+                            
+                            <!-- Rotor slots for flux barriers (barreras de flujo) -->
+                            <g id="fluxBarriers"><g transform="rotate(22.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g><g transform="rotate(67.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g><g transform="rotate(112.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g><g transform="rotate(157.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g><g transform="rotate(202.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g><g transform="rotate(247.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g><g transform="rotate(292.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g><g transform="rotate(337.5, 200, 200)"><rect x="195" y="110" width="10" height="15" rx="2" fill="#0a0a1a" opacity="0.8"></rect></g></g>
+                            
+                            <!-- ═══════════════════════════════════════════════════════════ -->
+                            <!-- SHAFT - Eje de transmisión                                          -->
+                            <!-- Conecta el rotor a la transmisión del vehículo                -->
+                            <!-- ═══════════════════════════════════════════════════════════ -->
+                            <circle cx="200" cy="200" r="22" fill="url(#shaftGradient)" stroke="#5a5a6a" stroke-width="3"></circle>
+                            <circle cx="200" cy="200" r="10" fill="#1a1a2a"></circle>
+                            
+                            <!-- Position marker for rotation visualization -->
+                            <rect x="196" y="185" width="8" height="20" fill="#00ffc8" rx="2"></rect>
+                        </g>
+                        
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <!-- ELECTROMAGNETIC FIELD LINES - Líneas de campo magnético   -->
+                        <!-- Solo visibles cuando el motor está encendido                       -->
+                        <!-- ═══════════════════════════════════════════════════════════ -->
+                        <g id="fieldLines"><line x1="200" y1="200" x2="330" y2="200" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="0" style="animation-delay: 0s;"></line><line x1="200" y1="200" x2="312.58330249197707" y2="265" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="1" style="animation-delay: 0.08s;"></line><line x1="200" y1="200" x2="265" y2="312.583302491977" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="2" style="animation-delay: 0.16s;"></line><line x1="200" y1="200" x2="200" y2="330" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="3" style="animation-delay: 0.24s;"></line><line x1="200" y1="200" x2="135.00000000000003" y2="312.58330249197707" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="4" style="animation-delay: 0.32s;"></line><line x1="200" y1="200" x2="87.41669750802296" y2="265" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="5" style="animation-delay: 0.4s;"></line><line x1="200" y1="200" x2="70" y2="200.00000000000003" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="6" style="animation-delay: 0.48s;"></line><line x1="200" y1="200" x2="87.41669750802298" y2="135" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="7" style="animation-delay: 0.56s;"></line><line x1="200" y1="200" x2="134.99999999999994" y2="87.41669750802299" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="8" style="animation-delay: 0.64s;"></line><line x1="200" y1="200" x2="199.99999999999997" y2="70" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="9" style="animation-delay: 0.72s;"></line><line x1="200" y1="200" x2="265" y2="87.41669750802298" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="10" style="animation-delay: 0.8s;"></line><line x1="200" y1="200" x2="312.583302491977" y2="134.99999999999994" stroke="rgba(0, 255, 200, 0.35)" stroke-width="2" stroke-dasharray="8,4" class="field-line" data-index="11" style="animation-delay: 0.88s;"></line></g>
+                        
+                        <!-- Center RPM display -->
+                        <text x="200" y="205" text-anchor="middle" dominant-baseline="middle" fill="#00ffc8" font-size="12" font-family="monospace" font-weight="bold" id="rpmText">OFF</text>
+                    </svg>
+                </div>
+                
+                <!-- Motor Specs -->
+                <div class="motor-specs" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div class="spec-item">
+                        <span class="spec-label">Modelo:</span>
+                        <span class="spec-value">Model 3 Performance</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Tipo motor (trasero):</span>
+                        <span class="spec-value">IPM-SynRM</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Tipo motor (delantero):</span>
+                        <span class="spec-value">IM (Inducción)</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Potencia total sistema:</span>
+                        <span class="spec-value">353 kW (480 CV)</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Potencia motor trasero:</span>
+                        <span class="spec-value">~221 kW (pico dyno)</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Potencia motor delantero:</span>
+                        <span class="spec-value">~142 kW</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Torque en ruedas:</span>
+                        <span class="spec-value">660 Nm</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Torque eje motor (trasero):</span>
+                        <span class="spec-value">~365 Nm</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">RPM máx. motor:</span>
+                        <span class="spec-value">18.000 RPM</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">RPM inicio field weakening:</span>
+                        <span class="spec-value">~5.800 RPM</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Voltaje bus DC:</span>
+                        <span class="spec-value">400 V (nominal)</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Batería:</span>
+                        <span class="spec-value">82 kWh (LR 2170)</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Ratio reductor:</span>
+                        <span class="spec-value">9,05 : 1</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Eficiencia motor:</span>
+                        <span class="spec-value">≥ 96,5 %</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Velocidad máx.:</span>
+                        <span class="spec-value">261 km/h</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">0–100 km/h:</span>
+                        <span class="spec-value">3,1 s</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Autonomía WLTP:</span>
+                        <span class="spec-value">547 km</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Tracción:</span>
+                        <span class="spec-value">AWD (Dual Motor)</span>
+                    </div>
+                </div>
+                
+                <!-- Component Legend -->
+                <div class="component-legend">
+                    <div class="legend-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        Leyenda de Componentes del Motor
+                    </div>
+                    <div class="legend-grid">
+                        <div class="legend-item stator">
+                            <div class="legend-color" style="background: linear-gradient(135deg, #3a3a5a, #2a2a4a);"></div>
+                            <div class="legend-text">
+                                <h5>Estator (Parte Fija)</h5>
+                                <p>Estructura externa fija que contiene las bobinas de cobre. Genera el campo magnético rotativo.</p>
+                            </div>
+                        </div>
+                        <div class="legend-item copper">
+                            <div class="legend-color" style="background: linear-gradient(90deg, #b87333, #da8a47);"></div>
+                            <div class="legend-text">
+                                <h5>Bobinas de Cobre</h5>
+                                <p>Devanados de wire de cobre aislado. La corriente eléctrica crea campos electromagnéticos.</p>
+                            </div>
+                        </div>
+                        <div class="legend-item rotor">
+                            <div class="legend-color" style="background: linear-gradient(135deg, #2a3a4a, #1a2a3a);"></div>
+                            <div class="legend-text">
+                                <h5>Rotor (Parte Móvil)</h5>
+                                <p>Núcleo de acero laminado que gira. Contiene los imanes permanentes internos.</p>
+                            </div>
+                        </div>
+                        <div class="legend-item magnet-n">
+                            <div class="legend-color" style="background: linear-gradient(90deg, #cc3333, #ff4444);"></div>
+                            <div class="legend-text">
+                                <h5>Imán Norte (N)</h5>
+                                <p>Imán permanente incrustado en el rotor. Polo norte orientado hacia el estator.</p>
+                            </div>
+                        </div>
+                        <div class="legend-item magnet-s">
+                            <div class="legend-color" style="background: linear-gradient(90deg, #3333cc, #4444ff);"></div>
+                            <div class="legend-text">
+                                <h5>Imán Sur (S)</h5>
+                                <p>Imán permanente incrustado en el rotor. Polo sur orientado hacia el estator.</p>
+                            </div>
+                        </div>
+                        <div class="legend-item airgap">
+                            <div class="legend-color" style="background: #888;"></div>
+                            <div class="legend-text">
+                                <h5>Entrehierro (Air Gap)</h5>
+                                <p>Espacio de aire entre estator y rotor. El campo magnético cruza esta zona.</p>
+                            </div>
+                        </div>
+                        <div class="legend-item shaft">
+                            <div class="legend-color" style="background: linear-gradient(135deg, #4a4a5a, #2a2a3a);"></div>
+                            <div class="legend-text">
+                                <h5>Eje (Shaft)</h5>
+                                <p>Transmite la fuerza rotativa del motor a la transmisión del vehículo.</p>
+                            </div>
+                        </div>
+                        <div class="legend-item field">
+                            <div class="legend-color" style="background: rgba(0, 255, 200, 0.5);"></div>
+                            <div class="legend-text">
+                                <h5>Líneas de Campo</h5>
+                                <p>Representación visual del flujo magnético entre estator y rotor.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tesla Tech Info -->
+                <div class="tesla-specs">
+                    <h4>
+                        <span class="tesla-badge">TESLA</span>
+                        Tecnología IPM-SynRM
+                    </h4>
+                    <div class="tesla-info">
+                        <p>
+                            Los motores Tesla utilizan una configuración <strong>IPM (Interior Permanent Magnet)</strong> 
+                            combinada con <strong>Reluctancia Síncrona (SynRM)</strong>. Los imanes están incrustados 
+                            dentro del rotor en forma de V, no en la superficie.
+                        </p>
+                        <p>
+                            Esta configuración permite:<br>
+                            • Mayor eficiencia en todo el rango de velocidad<br>
+                            • Mejor enfriamiento de los imanes<br>
+                            • Operación a altas RPM (hasta 18.000 RPM, limitado por el software)<br>
+                            • Torque adicional por reluctancia
+                        </p>
+                    </div>
+                    <div class="tesla-features">
+                        <div class="tesla-feature">
+                            <strong>Configuración</strong>
+                            Imanes en V incrustados
+                        </div>
+                        <div class="tesla-feature">
+                            <strong>Material</strong>
+                            NdFeB (Neodimio)
+                        </div>
+                        <div class="tesla-feature">
+                            <strong>Refrigeración</strong>
+                            Aceite circulante
+                        </div>
+                        <div class="tesla-feature">
+                            <strong>Eficiencia</strong>
+                            ≥ 96,5% (pico IPM)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="card">
+                <!-- Voltage Control -->
+                <div class="control-section">
+                    <div class="control-header">
+                        <div class="control-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                            Voltaje del Bus DC
+                        </div>
+                        <div class="control-value" style="color: #eab308;" id="voltageValue">400V</div>
+                    </div>
+                    <input type="range" class="voltage-slider" id="voltageSlider" min="0" max="400" value="400">
+                    <div class="slider-labels">
+                        <span>0V</span>
+                        <span>400V (Batería Tesla)</span>
+                    </div>
+                    <div class="control-comment">
+                        <strong>Voltaje DC:</strong> Proviene del paquete de baterías. Tesla Model 3 Performance usa ~350–400V según SOC.
+                        <strong>Mayor voltaje = más par y potencia disponibles</strong> (P = V × I). 
+                        A batería llena (~400V) el motor da su potencia máxima. A batería baja el par cae proporcionalmente.
+                        El voltaje NO afecta las RPM máximas — el inversor regula la frecuencia independientemente.
+                    </div>
+                </div>
+
+                <!-- Mode Selector -->
+                <div class="control-section">
+                    <div class="control-label" style="margin-bottom: 10px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        Modo de Conducción
+                    </div>
+                    <div class="mode-selector">
+                        <button class="mode-btn eco" data-mode="eco">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
+                                <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+                            </svg>
+                            <span>Eco</span>
+                        </button>
+                        <button class="mode-btn normal active" data-mode="normal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
+                                <circle cx="7" cy="17" r="2"></circle>
+                                <path d="M9 17h6"></path>
+                                <circle cx="17" cy="17" r="2"></circle>
+                            </svg>
+                            <span>Normal</span>
+                        </button>
+                        <button class="mode-btn sport" data-mode="sport">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            <span>Sport</span>
+                        </button>
+                    </div>
+                    <div class="control-comment">
+                        <strong>Modos:</strong> Eco limita potencia para máxima autonomía. 
+                        Sport aumenta respuesta y potencia. Normal equilibra ambos.
+                    </div>
+                </div>
+
+                <!-- Throttle -->
+                <div class="control-section">
+                    <div class="throttle-section">
+                        <div class="throttle-container">
+                            <div class="throttle-label">Pedal del Acelerador</div>
+                            <div class="throttle-pedal" id="throttlePedal">
+                                <div class="throttle-fill" id="throttleFill" style="height: 0%;"></div>
+                            </div>
+                            <div class="throttle-value" id="throttleValue">0%</div>
+                            <div class="throttle-buttons">
+                                <button class="throttle-btn" id="throttleUp" title="Aumentar +10%" disabled="disabled">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="18 15 12 9 6 15"></polyline>
+                                    </svg>
+                                </button>
+                                <button class="throttle-btn" id="throttleDown" title="Reducir -10%" disabled="disabled">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </button>
+                                <button class="throttle-btn" id="throttleReset" title="Soltar pedal" disabled="disabled">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="1 4 1 10 7 10"></polyline>
+                                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Battery & Temperature -->
+                        <div class="status-gauges">
+                            <div class="status-gauge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="batteryIcon" style="stroke: rgb(234, 179, 8);">
+                                    <rect x="1" y="6" width="18" height="12" rx="2" ry="2"></rect>
+                                    <line x1="23" y1="13" x2="23" y2="11"></line>
+                                    <rect x="3" y="8" width="10" height="8" fill="currentColor" opacity="0.3"></rect>
+                                </svg>
+                                <div class="value battery-medium" id="batteryValue">24%</div>
+                                <div class="label">Batería</div>
+                            </div>
+                            <div class="status-gauge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="tempIcon" style="stroke: rgb(0, 255, 200);">
+                                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                                    <line x1="12" y1="6" x2="12" y2="12" stroke-width="2"></line>
+                                </svg>
+                                <div class="value temp-normal" id="tempValue">35°C</div>
+                                <div class="label">Temp. Motor</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-comment">
+                        <strong>Acelerador:</strong> Envía señal al inversor que controla la frecuencia 
+                        y corriente hacia el motor. Suelta para regeneración suave (modo coasting).
+                    </div>
+                </div>
+
+                <!-- ── Freno Regenerativo ── -->
+                <div class="regen-section">
+                    <div class="regen-header">
+                        <div class="regen-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            Freno Regenerativo — Modo Generador
+                        </div>
+                        <span class="mode-badge motor" id="modeBadge">MOTOR</span>
+                    </div>
+
+                    <!-- Nivel de regeneración -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.8rem; color:#888; margin-bottom:8px;">Intensidad de regeneración:</div>
+                        <div class="regen-level-selector">
+                            <button class="regen-btn" id="regenLow" data-level="low">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+                                </svg>
+                                Estándar<br><span style="font-size:0.65rem;color:#666;">~20 kW</span>
+                            </button>
+                            <button class="regen-btn active" id="regenMed" data-level="medium">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                                Fuerte<br><span style="font-size:0.65rem;color:#666;">~60 kW</span>
+                            </button>
+                            <button class="regen-btn" id="regenHigh" data-level="high">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                                Máximo<br><span style="font-size:0.65rem;color:#666;">~100 kW</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="regen-pedal-row">
+                        <div class="brake-pedal-container">
+                            <div class="brake-pedal-label">Freno</div>
+                            <div class="brake-pedal" id="brakePedal">
+                                <div class="brake-pedal-fill" id="brakeFill" style="height:0%;"></div>
+                            </div>
+                            <div class="brake-pedal-value" id="brakeValue">0%</div>
+                            <div style="display:flex;gap:6px;margin-top:4px;">
+                                <button class="throttle-btn" id="brakeUp" title="+10% freno" disabled>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                </button>
+                                <button class="throttle-btn" id="brakeDown" title="-10% freno" disabled>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                                <button class="throttle-btn" id="brakeReset" title="Soltar freno" disabled>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="regen-info-box">
+                            <!-- Energy flow indicator -->
+                            <div class="regen-flow" id="regenFlowBox">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="width:18px;height:18px;">
+                                    <rect x="1" y="6" width="18" height="12" rx="2"></rect>
+                                    <line x1="23" y1="13" x2="23" y2="11"></line>
+                                </svg>
+                                <span id="regenFlowText" style="color:#666;">Motor en espera</span>
+                                <span class="regen-power-value" id="regenPowerValue">— kW</span>
+                            </div>
+
+                            <!-- Regen torque gauge -->
+                            <div>
+                                <div style="font-size:0.75rem;color:#888;margin-bottom:5px;">Par de frenado (torque negativo):</div>
+                                <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:6px;">
+                                    <span class="linear-gauge-number" style="color:#22c55e;font-family:'Courier New',monospace;font-size:1.3rem;" id="regenTorqueValue">0</span>
+                                    <span style="font-size:0.8rem;color:#666;">Nm</span>
+                                </div>
+                                <div style="height:8px;background:#1a1a2e;border-radius:4px;overflow:hidden;">
+                                    <div id="regenTorqueFill" style="height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#22c55e,#16a34a);box-shadow:0 0 12px rgba(34,197,94,0.4);transition:width 0.3s;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Battery recharge rate -->
+                            <div>
+                                <div style="font-size:0.75rem;color:#888;margin-bottom:5px;">Potencia de recarga batería:</div>
+                                <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:6px;">
+                                    <span class="linear-gauge-number" style="color:#22c55e;font-family:'Courier New',monospace;font-size:1.3rem;" id="regenChargeValue">0</span>
+                                    <span style="font-size:0.8rem;color:#666;">kW</span>
+                                    <span style="font-size:0.7rem;color:#444;margin-left:4px;">(máx. ~100 kW en Model 3 Perf.)</span>
+                                </div>
+                                <div style="height:8px;background:#1a1a2e;border-radius:4px;overflow:hidden;">
+                                    <div id="regenChargeFill" style="height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#22c55e,#00ffc8);box-shadow:0 0 12px rgba(34,197,94,0.4);transition:width 0.3s;"></div>
+                                </div>
+                            </div>
+
+                            <div class="control-comment" style="font-size:0.7rem;">
+                                <strong>Modo Generador:</strong> Al frenar, el inversor invierte el flujo de corriente.
+                                El motor actúa como generador: la energía cinética se convierte en electricidad
+                                que recarga la batería. El par negativo desacelera el vehículo.
+                                Model 3 Performance recupera hasta <strong>~100 kW</strong> en frenada intensa.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current -->
+                <div class="current-display">
+                    <div class="current-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" style="width: 16px; height: 16px;">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                        Corriente CA (3 fases)
+                    </div>
+                    <div class="current-value" id="currentValue">0 A</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="currentFill" style="width: 0%;"></div>
+                </div>
+                <div class="control-comment">
+                    <strong>Corriente:</strong> El inversor convierte DC a CA trifásica. 
+                    Mayor corriente = más torque, pero mayor calentamiento.
+                </div>
+            </div>
+
+            <!-- Dashboard -->
+            <div class="dashboard-section">
+                <!-- Speed & RPM Gauges -->
+                <div class="card">
+                    <div class="gauge-row">
+                        <div class="circular-gauge">
+                            <svg viewBox="0 0 100 100">
+                                <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
+                                <circle class="gauge-fill" cx="50" cy="50" r="45" id="speedGauge" stroke-dasharray="282.7" stroke-dashoffset="282.7" style="stroke-dashoffset: 282.7px;"></circle>
+                            </svg>
+                            <div class="gauge-inner">
+                                <div class="gauge-value" id="speedValue">0</div>
+                                <div class="gauge-unit">km/h</div>
+                            </div>
+                            <div class="gauge-label">Velocidad</div>
+                        </div>
+                        <div class="circular-gauge">
+                            <svg viewBox="0 0 100 100">
+                                <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
+                                <circle class="gauge-fill" cx="50" cy="50" r="45" id="rpmGauge" stroke-dasharray="282.7" stroke-dashoffset="282.7" style="stroke-dashoffset: 282.7px;"></circle>
+                            </svg>
+                            <div class="gauge-inner">
+                                <div class="gauge-value" id="rpmDisplay">0</div>
+                                <div class="gauge-unit">RPM</div>
+                            </div>
+                            <div class="gauge-label">RPM Motor</div>
+                        </div>
+                    </div>
+                    <div class="control-comment" style="margin-top: 10px;">
+                        <strong>Velocidad:</strong> Calculada desde RPM × ratio transmisión (9:1 aprox). 
+                        Tesla Model 3 alcanza 261 km/h máxima.
+                    </div>
+                </div>
+
+                <!-- Power Gauge -->
+                <div class="linear-gauge">
+                    <div class="linear-gauge-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#00ffc8" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        <span class="linear-gauge-label">Potencia de Salida</span>
+                    </div>
+                    <div class="linear-gauge-value">
+                        <span class="linear-gauge-number" style="color: #00ffc8;" id="powerValue">0</span>
+                        <span class="linear-gauge-unit">kW</span>
+                    </div>
+                    <div class="linear-gauge-bar">
+                        <div class="linear-gauge-fill cyan" id="powerFill" style="width: 0%;"></div>
+                    </div>
+                    <div class="control-comment" style="margin-top: 8px; font-size: 0.7rem;">
+                        P = T × ω. Motor trasero IPM: pico <strong>~221 kW a 5800 RPM</strong>. Sistema dual total: 353 kW (480 CV).
+                    </div>
+                </div>
+
+                <!-- Torque Gauge -->
+                <div class="linear-gauge">
+                    <div class="linear-gauge-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 16v-4"></path>
+                            <path d="M12 8h.01"></path>
+                        </svg>
+                        <span class="linear-gauge-label">Torque en el Eje del Motor</span>
+                    </div>
+                    <div class="linear-gauge-value">
+                        <span class="linear-gauge-number" style="color: #f97316;" id="torqueValue">0</span>
+                        <span class="linear-gauge-unit">Nm</span>
+                        <span style="font-size:0.75rem; color:#888; margin-left:8px;">(ruedas: <span id="torqueWheelsValue">0</span> Nm)</span>
+                    </div>
+                    <div class="linear-gauge-bar">
+                        <div class="linear-gauge-fill orange" id="torqueFill" style="width: 0%;"></div>
+                    </div>
+                    <div class="control-comment" style="margin-top: 8px; font-size: 0.7rem;">
+                        <strong>Model 3 Perf.:</strong> ~365 Nm en eje motor trasero (IPM) · 660 Nm en ruedas (sistema dual AWD).
+                        Torque máximo desde 0 RPM, luego cae por field weakening.
+                    </div>
+                </div>
+
+                <!-- FCEM Indicator -->
+                <div class="linear-gauge" style="border-color: rgba(168,85,247,0.4);">
+                    <div class="linear-gauge-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                        <span class="linear-gauge-label">Fuerza Contraelectromotriz (FCEM / Back-EMF)</span>
+                    </div>
+                    <div class="linear-gauge-value">
+                        <span class="linear-gauge-number" style="color: #a855f7;" id="bemfValue">0</span>
+                        <span class="linear-gauge-unit">V</span>
+                        <span style="font-size:0.75rem; color:#888; margin-left:8px;">(<span id="bemfPctValue">0</span>% del V<sub>bus</sub>)</span>
+                    </div>
+                    <div class="linear-gauge-bar">
+                        <div class="linear-gauge-fill" id="bemfFill" style="width:0%; background: linear-gradient(90deg, #a855f7, #6366f1); box-shadow: 0 0 12px rgba(168,85,247,0.5);"></div>
+                    </div>
+                    <div class="control-comment" style="margin-top: 8px; font-size: 0.7rem;">
+                        <strong>FCEM = K<sub>e</sub> × ω</strong> (tensión inducida en circuito abierto del estator).
+                        El control vectorial (FOC) inyecta corriente Id negativa en field weakening para que la FCEM
+                        nunca sature el inversor — por eso el motor puede girar hasta 18.000 RPM con solo 400V de bus.
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <div class="stat-value" style="color: #a855f7;" id="consumptionValue">0</div>
+                        <div class="stat-label">kWh/100km</div>
+                    </div>
+                    <div class="stat-card">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <div class="stat-value" style="color: #22c55e;" id="rangeValue">8200</div>
+                        <div class="stat-label">km autonomía</div>
+                    </div>
+                </div>
+                <div class="control-comment" style="margin-top: 10px;">
+                    <strong>Consumo:</strong> Model 3 Performance: ~17,5 kWh/100km (WLTP). 
+                    Autonomía WLTP: 547 km. Batería: 82 kWh (celdas 2170).
+                </div>
+            </div>
+        </div>
+
+        <!-- Torque vs RPM Chart Panel -->
+        <div class="card" id="torqueChartCard" style="margin-top: 25px; border-color: rgba(0,255,200,0.3);">
+            <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                Curva de Torque vs RPM — Tesla Model 3 Performance (Motor IPM Trasero)
+                <span style="font-size:0.75rem; color:#666; margin-left:auto;">El punto rojo es el estado actual del motor</span>
+            </div>
+            <div style="position:relative; width:100%; padding-bottom: 8px;">
+                <canvas id="torqueChart" style="width:100%; height:320px; display:block;"></canvas>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:14px;">
+                <div class="control-comment" style="border-color:#f97316;">
+                    <strong style="color:#f97316;">① Zona Torque Constante (0–5800 RPM)</strong><br>
+                    El inversor inyecta corriente de eje q máxima (Iq_max). El flujo magnético está a tope.
+                    Torque ≈ 365 Nm constantes. La potencia sube linealmente hasta 221 kW en 5800 RPM.
+                </div>
+                <div class="control-comment" style="border-color:#a855f7;">
+                    <strong style="color:#a855f7;">② Field Weakening (5800–14000 RPM)</strong><br>
+                    El inversor inyecta corriente de eje d negativa (Id &lt; 0) que <em>reduce el flujo</em> del rotor.
+                    La FCEM no supera el Vbus. Potencia ≈ 221 kW plateau. Torque cae como P/ω.
+                </div>
+                <div class="control-comment" style="border-color:#ef4444;">
+                    <strong style="color:#ef4444;">③ Alta Velocidad — Pérdidas en el Hierro (14000–18000 RPM)</strong><br>
+                    Las corrientes de Foucault e histéresis crecen con RPM². La potencia útil cae ~42%.
+                    El motor llega a 18.000 RPM (~261 km/h) con ~68 Nm y ~128 kW.
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="info-panel card" id="infoPanel">
+            <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                Información Técnica - Motor IPM tipo Tesla
+            </div>
+            <div class="info-content">
+                <div class="info-section">
+                    <h4>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        ¿Qué es un motor IPM?
+                    </h4>
+                    <p>
+                        <strong>IPM (Interior Permanent Magnet)</strong> es un tipo de motor eléctrico donde 
+                        los imanes permanentes están <strong>incrustados dentro del rotor</strong>, no en su superficie.
+                        Esta configuración es utilizada por Tesla desde el Model 3.
+                    </p>
+                    <p>
+                        La combinación con <strong>Reluctancia Síncrona (SynRM)</strong> permite obtener torque 
+                        tanto de los imanes permanentes como de la variación de reluctancia magnética del rotor.
+                    </p>
+                </div>
+                <div class="info-section">
+                    <h4>Ventajas de la configuración IPM</h4>
+                    <ul>
+                        <li><strong>Mayor eficiencia:</strong> ≥ 96,5% en el punto óptimo de operación</li>
+                        <li><strong>Mejor enfriamiento:</strong> Imanes protegidos dentro del rotor</li>
+                        <li><strong>Altas RPM:</strong> Hasta 18.000 RPM — imanes interiores sujetos mecánicamente, sin riesgo de desprendimiento</li>
+                        <li><strong>Mayor densidad de potencia:</strong> Más potencia en menos espacio</li>
+                        <li><strong>Torque adicional:</strong> Por efecto de reluctancia</li>
+                        <li><strong>Wide constant power range:</strong> Potencia constante en amplio rango</li>
+                    </ul>
+                </div>
+                <div class="info-section">
+                    <h4>Configuración de Imanes en V (Tesla)</h4>
+                    <p>
+                        Tesla utiliza una configuración de <strong> imanes en forma de V</strong> 
+                        incrustados en el rotor. Esto optimiza el flujo magnético y permite:
+                    </p>
+                    <ul>
+                        <li>Mejor distribución del campo magnético</li>
+                        <li>Reducción de pérdidas por parpadeo (cogging torque)</li>
+                        <li>Operación eficiente a altas velocidades</li>
+                        <li>Mayor robustez mecánica del rotor</li>
+                    </ul>
+                </div>
+                <div class="info-section">
+                    <h4>Fórmulas Físicas del Motor</h4>
+                    <div class="formula-box">
+                        <p><strong>Potencia:</strong> P = V × I × cos(φ) × Eficiencia</p>
+                        <p><strong>Torque:</strong> T = k × I + T_reluctancia</p>
+                        <p><strong>Velocidad:</strong> n = 120 × f / p (RPM)</p>
+                        <p><strong>EMF:</strong> E = k × ω × φ (Fuerza contraelectromotriz)</p>
+                        <p><strong>Eficiencia:</strong> η = P_salida / P_entrada</p>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <h4>Comparación de Modos</h4>
+                    <div class="mode-comparison">
+                        <div class="mode-box eco">
+                            <strong style="color: #22c55e;">ECO</strong>
+                            <p style="color: #888;">-30% potencia<br>+15% eficiencia<br>Máxima autonomía</p>
+                        </div>
+                        <div class="mode-box normal">
+                            <strong style="color: #3b82f6;">NORMAL</strong>
+                            <p style="color: #888;">Potencia estándar<br>Eficiencia balanceada<br>Uso diario</p>
+                        </div>
+                        <div class="mode-box sport">
+                            <strong style="color: #ef4444;">SPORT</strong>
+                            <p style="color: #888;">+20% potencia<br>-15% eficiencia<br>Máximo rendimiento</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <h4>Sistema de Propulsión — Model 3 Performance</h4>
+                    <p>
+                        El sistema completo incluye:
+                    </p>
+                    <ul>
+                        <li><strong>Batería:</strong> 82 kWh brutos, ~75 kWh netos — celdas 21700 (Panasonic/CATL), ~400 V nominal</li>
+                        <li><strong>Inversor:</strong> Convierte DC a CA trifásica con SiC MOSFETs (carburos de silicio) de alta frecuencia</li>
+                        <li><strong>Motor trasero:</strong> IPM-SynRM, ~211 kW, ~365 Nm, refrigeración por aceite</li>
+                        <li><strong>Motor delantero:</strong> Inducción (IM), ~142 kW, refrigeración por agua</li>
+                        <li><strong>Transmisión trasera:</strong> Reductora de 1 marcha, ratio 9,05 : 1</li>
+                        <li><strong>Transmisión delantera:</strong> Reductora de 1 marcha, ratio 8,28 : 1</li>
+                        <li><strong>Diferencial:</strong> Electrónico — control independiente de par por eje</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Simulador Tesla Model 3 Performance — Motor IPM-SynRM trasero con Control Vectorial y FCEM</p>
+            <p style="margin-top: 5px; color: #333;">Valores basados en datos reales: Sandy Munro teardown, Motor Trend dyno, especificaciones oficiales Tesla. Simulación con fines educativos.</p>
+        </footer>
+    </div>
+
+    <script>
+        // ══════════════════════════════════════════════════════════════
+        // CONSTANTES REALES: Tesla Model 3 Performance (Dual Motor AWD)
+        // Fuentes: Sandy Munro teardown, Motor Trend dyno, insideEVs
+        //
+        // Motor TRASERO (IPM): ~211 kW, ~375 Nm en eje
+        // Motor DELANTERO (IM): ~142 kW
+        // Total sistema: ~353 kW (480 HP), ~660 Nm en ruedas
+        //
+        // ─── Calibración basada en curva dyno real ───────────────────
+        // Datos de referencia (motor trasero solo, 100% throttle):
+        //   0–4500 RPM  → torque ~360–375 Nm (torque constante)
+        //   4500 RPM    → fin zona torque constante
+        //   4500–18000  → field weakening: potencia ~210 kW constante
+        //   18000 RPM   → 111 Nm (P = T×ω ≈ 210 kW)
+        //
+        // La FCEM NUNCA iguala directamente al Vbus porque el control
+        // vectorial (Field Oriented Control) inyecta corriente Id negativa
+        // (desmagnetización) que reduce el flujo efectivo del rotor,
+        // permitiendo operar hasta 18000 RPM con el mismo bus de 400V.
+        // ══════════════════════════════════════════════════════════════
+        const CONSTANTS = {
+            maxVoltage: 400,           // Voltaje nominal batería (V)
+            maxRpm: 18000,             // RPM máximas motor
+            maxCurrent: 700,           // Corriente pico fase (A)
+            transmissionRatio: 9.05,   // Ratio reductor Model 3 Performance
+            wheelDiameter: 0.687,      // Diámetro rueda 235/35R20 (m)
+            efficiency: 0.965,         // Eficiencia pico motor IPM
+            batteryCapacity: 82,       // kWh
+
+            // ─── Curva Torque vs RPM — Motor trasero IPM ─────────────
+            // Zona 1 (torque constante): 0 → rpmBase
+            // Zona 2 (field weakening):  rpmBase → maxRpm
+            //   En FW: T(n) = T_base × (rpmBase / n)  → P = cte.
+            //   Con caída suave adicional a RPM muy altas por saturación
+            //   magnética y pérdidas en el hierro.
+
+            rpmBase: 5800,             // RPM inicio field weakening (dyno Motor Trend)
+                                       // P_pico = 365 × (2π×5800/60) / 1000 = 221.7 kW
+            torquePeak: 365,           // Nm en eje motor trasero (zona torque constante)
+                                       // Dato Munro teardown / dyno Motor Trend
+
+            // ─── FCEM para display educativo ─────────────────────────
+            // En un IPM real, la FCEM de circuito abierto sí sube con RPM,
+            // pero el control vectorial la gestiona. Para el display usamos:
+            // FCEM_display = Ke_display × ω, donde Ke está calibrado para
+            // que a rpmBase la FCEM sea ~75% del Vbus (valor típico real).
+            // Ke_display = 0.75 × Vbus / ω_base = 0.75 × 400 / 471.2 = 0.636
+            Ke_display: 0.245,         // V·s/rad — para display de FCEM (fase a fase)
+                                       // FCEM_LL = Ke × ω (tensión de línea)
+                                       // A 18000 RPM: 0.245 × 1885 ≈ 462 V (tensión back-emf pico)
+
+            polePairs: 4,
+            baseTemperature: 35,
+            maxTemperature: 150,
+
+            // ─── Freno Regenerativo ──────────────────────────────────
+            // Model 3 Performance: hasta ~100 kW de recuperación
+            // Torque de freno máximo en eje motor: ~160 Nm (a baja velocidad)
+            // La batería acepta hasta ~250 A de carga (límite térmico celdas)
+            regenMaxPower: { low: 20, medium: 60, high: 100 }, // kW por nivel
+            regenEfficiency: 0.91,  // eficiencia de recuperación (motor+inversor)
+            regenMaxTorque: 160,    // Nm negativos máximos en eje motor
+        };
+
+        const MODE_MULTIPLIERS = {
+            eco: { power: 0.7, efficiency: 1.15 },
+            normal: { power: 1.0, efficiency: 1.0 },
+            sport: { power: 1.2, efficiency: 0.85 }
+        };
+
+        // State
+        let state = {
+            isOn: false,
+            voltage: 400,
+            currentRpm: 0,
+            throttle: 0,
+            brake: 0,           // 0–100 % pedal de freno
+            regenLevel: 'medium', // 'low' | 'medium' | 'high'
+            mode: 'normal',
+            batteryLevel: 85,
+            temperature: CONSTANTS.baseTemperature
+        };
+
+        // DOM Elements
+        const elements = {
+            powerBtn: document.getElementById('powerBtn'),
+            logoIcon: document.getElementById('logoIcon'),
+            statusValue: document.getElementById('statusValue'),
+            voltageSlider: document.getElementById('voltageSlider'),
+            voltageValue: document.getElementById('voltageValue'),
+            throttlePedal: document.getElementById('throttlePedal'),
+            throttleFill: document.getElementById('throttleFill'),
+            throttleValue: document.getElementById('throttleValue'),
+            throttleUp: document.getElementById('throttleUp'),
+            throttleDown: document.getElementById('throttleDown'),
+            throttleReset: document.getElementById('throttleReset'),
+            batteryValue: document.getElementById('batteryValue'),
+            batteryIcon: document.getElementById('batteryIcon'),
+            tempValue: document.getElementById('tempValue'),
+            tempIcon: document.getElementById('tempIcon'),
+            currentValue: document.getElementById('currentValue'),
+            currentFill: document.getElementById('currentFill'),
+            speedGauge: document.getElementById('speedGauge'),
+            speedValue: document.getElementById('speedValue'),
+            rpmGauge: document.getElementById('rpmGauge'),
+            rpmDisplay: document.getElementById('rpmDisplay'),
+            powerValue: document.getElementById('powerValue'),
+            powerFill: document.getElementById('powerFill'),
+            torqueValue: document.getElementById('torqueValue'),
+            torqueFill: document.getElementById('torqueFill'),
+            consumptionValue: document.getElementById('consumptionValue'),
+            rangeValue: document.getElementById('rangeValue'),
+            rotorGroup: document.getElementById('rotorGroup'),
+            motorSvg: document.getElementById('motorSvg'),
+            rpmText: document.getElementById('rpmText'),
+            infoBtn: document.getElementById('infoBtn'),
+            infoPanel: document.getElementById('infoPanel')
+        };
+
+        // Initialize SVG elements for Tesla-style IPM motor
+        function initMotorSVG() {
+            // Stator coils (12 slots, 3-phase)
+            const statorCoils = document.getElementById('statorCoils');
+            const numCoils = 12;
+            for (let i = 0; i < numCoils; i++) {
+                const angle = (i * 360 / numCoils);
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('transform', `rotate(${angle}, 200, 200)`);
+                
+                // Copper winding (tooth)
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', '192');
+                rect.setAttribute('y', '25');
+                rect.setAttribute('width', '16');
+                rect.setAttribute('height', '55');
+                rect.setAttribute('rx', '4');
+                rect.setAttribute('fill', 'url(#copperGradient)');
+                rect.setAttribute('stroke', '#8b4513');
+                rect.setAttribute('stroke-width', '1');
+                
+                // Stator tooth
+                const tooth = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                tooth.setAttribute('x', '196');
+                tooth.setAttribute('y', '80');
+                tooth.setAttribute('width', '8');
+                tooth.setAttribute('height', '45');
+                tooth.setAttribute('fill', '#3a3a5a');
+                
+                g.appendChild(rect);
+                g.appendChild(tooth);
+                statorCoils.appendChild(g);
+            }
+
+            // IPM Magnets in V-shape configuration (Tesla style)
+            const ipmMagnets = document.getElementById('ipmMagnets');
+            const numPoles = 8; // 4 pole pairs
+            const vAngle = 35; // V-shape angle
+            
+            for (let i = 0; i < numPoles; i++) {
+                const baseAngle = (i * 360 / numPoles);
+                const isNorth = i % 2 === 0;
+                
+                // Two magnets per pole in V configuration
+                for (let v = -1; v <= 1; v += 2) {
+                    const magnetAngle = baseAngle + (v * vAngle / 2);
+                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    g.setAttribute('transform', `rotate(${magnetAngle}, 200, 200)`);
+                    
+                    const magnet = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    magnet.setAttribute('x', '194');
+                    magnet.setAttribute('y', '70');
+                    magnet.setAttribute('width', '12');
+                    magnet.setAttribute('height', '35');
+                    magnet.setAttribute('rx', '2');
+                    magnet.setAttribute('fill', isNorth ? 'url(#magnetNorth)' : 'url(#magnetSouth)');
+                    magnet.setAttribute('opacity', '0.9');
+                    
+                    g.appendChild(magnet);
+                    ipmMagnets.appendChild(g);
+                }
+            }
+
+            // Flux barriers (air slots in rotor for reluctance torque)
+            const fluxBarriers = document.getElementById('fluxBarriers');
+            const numBarriers = 8;
+            for (let i = 0; i < numBarriers; i++) {
+                const angle = (i * 360 / numBarriers) + 22.5;
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('transform', `rotate(${angle}, 200, 200)`);
+                
+                // Barrier slot
+                const barrier = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                barrier.setAttribute('x', '195');
+                barrier.setAttribute('y', '110');
+                barrier.setAttribute('width', '10');
+                barrier.setAttribute('height', '15');
+                barrier.setAttribute('rx', '2');
+                barrier.setAttribute('fill', '#0a0a1a');
+                barrier.setAttribute('opacity', '0.8');
+                
+                g.appendChild(barrier);
+                fluxBarriers.appendChild(g);
+            }
+
+            // Field lines
+            const fieldLines = document.getElementById('fieldLines');
+            for (let i = 0; i < 12; i++) {
+                const angle = (i * 30);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                const x2 = 200 + 130 * Math.cos((angle * Math.PI) / 180);
+                const y2 = 200 + 130 * Math.sin((angle * Math.PI) / 180);
+                line.setAttribute('x1', '200');
+                line.setAttribute('y1', '200');
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', 'rgba(0, 255, 200, 0.35)');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke-dasharray', '8,4');
+                line.setAttribute('class', 'field-line');
+                line.setAttribute('data-index', i);
+                fieldLines.appendChild(line);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // MODELO FÍSICO — Curva torque real Tesla Model 3 Performance
+        //
+        // Datos dyno reales (motor trasero IPM solo):
+        //   0–5800 RPM  → torque ~365 Nm constante  → P sube hasta 221 kW
+        //   5800 RPM    → punto de potencia máxima: 221 kW (pico medido dyno)
+        //   5800–14000  → field weakening: P ≈ 211 kW plateau
+        //   14000–18000 → pérdidas hierro: P cae a ~130 kW a 18000 RPM
+        //
+        // Verificación en rpmBase (5800 RPM):
+        //   ω = 2π×5800/60 = 607.4 rad/s
+        //   P = 365 × 607.4 / 1000 = 221.7 kW  ✓ (pico dyno ~221 kW)
+        // ══════════════════════════════════════════════════════════════
+
+        function calculateTorqueAtRpm(rpm, throttle, mode) {
+            if (rpm <= 0 || throttle <= 0) return 0;
+
+            const modeConfig    = MODE_MULTIPLIERS[mode];
+            const throttleFrac  = throttle / 100;
+            const omega         = (2 * Math.PI * rpm) / 60;
+
+            // Factor de voltaje: el par disponible escala con el voltaje del bus.
+            // A 400V → factor 1.0 (plena potencia).
+            // A 200V → factor 0.5 (la corriente máxima del inversor cae a la mitad).
+            // Relación lineal: más voltaje = más potencia. Esto es correcto:
+            // P = V × I; si V sube con I constante, P sube proporcionalmente.
+            const voltageFactor = state.voltage / CONSTANTS.maxVoltage;  // 0→1
+
+            // ── Zona 1: Torque constante (0 → rpmBase) ────────────────
+            if (rpm <= CONSTANTS.rpmBase) {
+                const rampFactor = rpm < 150 ? rpm / 150 : 1.0;
+                const torque = CONSTANTS.torquePeak * modeConfig.power * throttleFrac * rampFactor * voltageFactor;
+                return Math.max(0, torque);
+            }
+
+            // Potencia techo = T_peak × ω_base × voltageFactor × modeFactor
+            const omegaBase = (2 * Math.PI * CONSTANTS.rpmBase) / 60;
+            const pPeak     = CONSTANTS.torquePeak * omegaBase * modeConfig.power * voltageFactor;
+
+            // ── Zona 2: Field Weakening (rpmBase → 14000 RPM) ─────────
+            if (rpm <= 14000) {
+                const torque = (pPeak / omega) * throttleFrac;
+                return Math.max(0, torque);
+            }
+
+            // ── Zona 3: Alta velocidad — pérdidas en el hierro (14000 → 18000) ──
+            const dropFrac    = (rpm - 14000) / (CONSTANTS.maxRpm - 14000);
+            const powerFactor = 1.0 - 0.42 * dropFrac;
+            const torque      = ((pPeak * powerFactor) / omega) * throttleFrac;
+            return Math.max(0, torque);
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // FÍSICA DEL FRENO REGENERATIVO — Modo Generador
+        //
+        // Cuando el pedal de freno se pisa (o el acelerador se suelta
+        // en "one-pedal driving"), el inversor invierte el flujo de
+        // corriente: el motor se convierte en generador.
+        //
+        // - El par mecánico es NEGATIVO → frena el vehículo
+        // - La corriente fluye de la máquina → inversor → batería
+        // - P_recuperada = T_neg × ω × η_regen
+        // - Limitada por: corriente máxima de carga de la batería,
+        //   par máximo de freno, y nivel elegido por el conductor
+        //
+        // A muy baja velocidad (<5 km/h ≈ <200 RPM en ruedas) el
+        // sistema desactiva la regen y usa solo frenos mecánicos.
+        // ══════════════════════════════════════════════════════════════
+        function calculateRegen() {
+            // Necesita estar encendido y tener velocidad mínima
+            if (!state.isOn || state.currentRpm < 300) {
+                return { active: false, torqueRegen: 0, powerRegen: 0, powerCharge: 0 };
+            }
+
+            // Freno regenerativo activo si:
+            //   a) pedal de freno pisado, o
+            //   b) acelerador suelto (coasting regen suave)
+            const brakeFrac   = state.brake / 100;
+            const coastingRegen = (state.throttle === 0 && state.brake === 0);
+
+            if (!coastingRegen && state.brake === 0) {
+                return { active: false, torqueRegen: 0, powerRegen: 0, powerCharge: 0 };
+            }
+
+            const omega = (2 * Math.PI * state.currentRpm) / 60;
+            const maxPowerKw = CONSTANTS.regenMaxPower[state.regenLevel];
+
+            let powerRegen; // kW generados por el motor
+
+            if (coastingRegen) {
+                // Regen suave al soltar el acelerador (one-pedal driving)
+                // ~10% del máximo del nivel seleccionado
+                powerRegen = maxPowerKw * 0.12;
+            } else {
+                // Regen proporcional al pedal de freno
+                powerRegen = maxPowerKw * brakeFrac;
+            }
+
+            // No puede recuperar más potencia que la disponible cinéticamente
+            // (limitada internamente por RPM — a muy bajas RPM hay poco par útil)
+            const rpmFactor = Math.min(1, state.currentRpm / 2000);
+            powerRegen *= rpmFactor;
+
+            // Torque de frenado: T = P / ω (negativo)
+            const torqueRegen = Math.min(
+                (powerRegen * 1000) / omega,
+                CONSTANTS.regenMaxTorque
+            );
+
+            // Potencia real que llega a la batería (pérdidas del generador)
+            const powerCharge = powerRegen * CONSTANTS.regenEfficiency;
+
+            return {
+                active: true,
+                torqueRegen: Math.round(torqueRegen * 10) / 10,
+                powerRegen:  Math.round(powerRegen  * 10) / 10,
+                powerCharge: Math.round(powerCharge * 10) / 10
+            };
+        }
+
+        function calculatePhysics() {
+            const regen = calculateRegen();
+
+            // Si hay freno activo y no hay acelerador → modo generador puro
+            const isRegenerating = regen.active && (state.brake > 0 || state.throttle === 0);
+            const torqueMotor = isRegenerating
+                ? 0
+                : calculateTorqueAtRpm(state.currentRpm, state.throttle, state.mode);
+
+            const modeConfig  = MODE_MULTIPLIERS[state.mode];
+
+            if (!state.isOn) {
+                return {
+                    current: 0, power: 0, torque: 0, torqueWheels: 0,
+                    speed: 0, consumption: 0,
+                    range: Math.round(CONSTANTS.batteryCapacity * 100),
+                    backEMF: 0, backEMFpct: 0,
+                    regen
+                };
+            }
+
+            const omega = (2 * Math.PI * Math.max(state.currentRpm, 1)) / 60;
+
+            // Potencia mecánica (motor o generador)
+            const powerMech = torqueMotor * omega;
+            const powerKw   = powerMech / 1000;
+
+            // FCEM para display
+            const backEMF    = CONSTANTS.Ke_display * omega;
+            const vBusEff    = CONSTANTS.maxVoltage * modeConfig.power;
+            const backEMFpct = Math.min(100, (backEMF / vBusEff) * 100);
+
+            // Corriente: en modo generador es negativa (fluye hacia batería)
+            const powerElec = isRegenerating
+                ? regen.powerRegen
+                : powerKw / CONSTANTS.efficiency;
+            const current = (powerElec * 1000) / (vBusEff * Math.sqrt(3) * 0.9);
+            const currentSigned = isRegenerating ? -current : current;
+
+            const wheelRpm     = state.currentRpm / CONSTANTS.transmissionRatio;
+            const speed        = (wheelRpm * Math.PI * CONSTANTS.wheelDiameter * 60) / 1000;
+            const torqueWheels = torqueMotor * CONSTANTS.transmissionRatio;
+
+            const consumption = (!isRegenerating && speed > 0)
+                ? (powerKw / speed) * 100 / modeConfig.efficiency
+                : 0;
+            const range = consumption > 0
+                ? (state.batteryLevel / 100 * CONSTANTS.batteryCapacity) / consumption * 100
+                : 0;
+
+            return {
+                current:       Math.round(Math.abs(currentSigned) * 10) / 10,
+                currentSigned: Math.round(currentSigned * 10) / 10,
+                power:         Math.round(powerKw * 10) / 10,
+                torque:        Math.round(torqueMotor * 10) / 10,
+                torqueWheels:  Math.round(torqueWheels),
+                speed:         Math.round(speed * 10) / 10,
+                consumption:   Math.round(consumption * 100) / 100,
+                range:         Math.round(range),
+                backEMF:       Math.round(backEMF),
+                backEMFpct:    Math.round(backEMFpct),
+                isRegenerating,
+                regen
+            };
+        }
+
+        // Update UI
+        function updateUI() {
+            const calc = calculatePhysics();
+            
+            // Update voltage
+            elements.voltageValue.textContent = `${state.voltage}V`;
+            
+            // Update throttle
+            elements.throttleFill.style.height = `${state.throttle}%`;
+            elements.throttleValue.textContent = `${Math.round(state.throttle)}%`;
+            
+            // Update battery
+            elements.batteryValue.textContent = `${Math.round(state.batteryLevel)}%`;
+            elements.batteryValue.className = 'value ' + 
+                (state.batteryLevel < 20 ? 'battery-low' : state.batteryLevel < 50 ? 'battery-medium' : 'battery-high');
+            elements.batteryIcon.style.stroke = 
+                state.batteryLevel < 20 ? '#ef4444' : state.batteryLevel < 50 ? '#eab308' : '#22c55e';
+            
+            // Update temperature
+            elements.tempValue.textContent = `${Math.round(state.temperature)}°C`;
+            elements.tempValue.className = 'value ' + 
+                (state.temperature > 100 ? 'temp-high' : state.temperature > 70 ? 'temp-medium' : 'temp-normal');
+            elements.tempIcon.style.stroke = 
+                state.temperature > 100 ? '#ef4444' : state.temperature > 70 ? '#f97316' : '#00ffc8';
+            
+            // Update current
+            elements.currentValue.textContent = `${calc.current} A`;
+            elements.currentFill.style.width = `${(calc.current / CONSTANTS.maxCurrent) * 100}%`;
+            
+            // Update speed gauge
+            const speedPercent = Math.min((calc.speed / 280) * 100, 100);
+            const circumference = 282.7;
+            elements.speedGauge.style.strokeDashoffset = circumference - (speedPercent / 100) * circumference;
+            elements.speedValue.textContent = Math.round(calc.speed);
+            
+            // Update RPM gauge
+            const rpmPercent = Math.min((state.currentRpm / CONSTANTS.maxRpm) * 100, 100);
+            elements.rpmGauge.style.strokeDashoffset = circumference - (rpmPercent / 100) * circumference;
+            elements.rpmDisplay.textContent = Math.round(state.currentRpm);
+            
+            // Update power
+            elements.powerValue.textContent = calc.power;
+            elements.powerFill.style.width = `${Math.min((calc.power / 221) * 100, 100)}%`;
+            
+            // Update torque
+            elements.torqueValue.textContent = calc.torque;
+            elements.torqueFill.style.width = `${Math.min((calc.torque / 375) * 100, 100)}%`;
+            if (document.getElementById('torqueWheelsValue'))
+                document.getElementById('torqueWheelsValue').textContent = calc.torqueWheels;
+
+            // Update BEMF
+            if (document.getElementById('bemfValue')) {
+                document.getElementById('bemfValue').textContent = calc.backEMF;
+                document.getElementById('bemfPctValue').textContent = calc.backEMFpct;
+                document.getElementById('bemfFill').style.width = `${calc.backEMFpct}%`;
+            }
+
+            // Update torque chart
+            updateTorqueChart();
+            
+            // Update consumption and range
+            elements.consumptionValue.textContent = calc.consumption;
+            elements.rangeValue.textContent = calc.range;
+            
+            // ── Regen / Generador UI ──────────────────────────────────
+            const regen = calc.regen || { active: false, torqueRegen: 0, powerRegen: 0, powerCharge: 0 };
+            const isRegen = calc.isRegenerating;
+
+            // Brake pedal display
+            const brakeFill  = document.getElementById('brakeFill');
+            const brakeValEl = document.getElementById('brakeValue');
+            if (brakeFill)  brakeFill.style.height  = `${state.brake}%`;
+            if (brakeValEl) brakeValEl.textContent   = `${Math.round(state.brake)}%`;
+
+            // Regen torque & charge gauges
+            const regenTorqueEl  = document.getElementById('regenTorqueValue');
+            const regenTorqueFill= document.getElementById('regenTorqueFill');
+            const regenChargeEl  = document.getElementById('regenChargeValue');
+            const regenChargeFill= document.getElementById('regenChargeFill');
+            const regenFlowBox   = document.getElementById('regenFlowBox');
+            const regenFlowText  = document.getElementById('regenFlowText');
+            const regenPowerVal  = document.getElementById('regenPowerValue');
+            const modeBadge      = document.getElementById('modeBadge');
+
+            if (regenTorqueEl)   regenTorqueEl.textContent  = regen.torqueRegen.toFixed(1);
+            if (regenTorqueFill) regenTorqueFill.style.width= `${Math.min((regen.torqueRegen / CONSTANTS.regenMaxTorque) * 100, 100)}%`;
+            if (regenChargeEl)   regenChargeEl.textContent  = regen.powerCharge.toFixed(1);
+            if (regenChargeFill) regenChargeFill.style.width= `${Math.min((regen.powerCharge / 100) * 100, 100)}%`;
+
+            if (isRegen) {
+                if (regenFlowBox)  { regenFlowBox.classList.add('active'); }
+                if (regenFlowText) { regenFlowText.textContent = '← Energía fluyendo a la batería'; regenFlowText.style.color = '#22c55e'; }
+                if (regenPowerVal) regenPowerVal.textContent = `+${regen.powerCharge.toFixed(1)} kW`;
+                if (modeBadge)     { modeBadge.textContent = 'GENERADOR'; modeBadge.className = 'mode-badge regen'; }
+            } else if (state.isOn && state.throttle > 0) {
+                if (regenFlowBox)  { regenFlowBox.classList.remove('active'); }
+                if (regenFlowText) { regenFlowText.textContent = 'Motor traccionando'; regenFlowText.style.color = '#00ffc8'; }
+                if (regenPowerVal) regenPowerVal.textContent = `${calc.power} kW`;
+                if (modeBadge)     { modeBadge.textContent = 'MOTOR'; modeBadge.className = 'mode-badge motor'; }
+            } else {
+                if (regenFlowBox)  { regenFlowBox.classList.remove('active'); }
+                if (regenFlowText) { regenFlowText.textContent = state.isOn ? 'Decelerando (coasting)' : 'Sistema apagado'; regenFlowText.style.color = '#666'; }
+                if (regenPowerVal) regenPowerVal.textContent = '— kW';
+                if (modeBadge)     { modeBadge.textContent = state.isOn ? 'COASTING' : 'APAGADO'; modeBadge.className = 'mode-badge coasting'; }
+            }
+
+            // ── Motor visualization ───────────────────────────────────
+            elements.rpmText.textContent = state.currentRpm > 0 ? `${Math.round(state.currentRpm)}` : 'OFF';
+            
+            // Rotor spin — reverses visually during hard regen
+            if (state.isOn && state.currentRpm > 0) {
+                const duration = 60 / state.currentRpm;
+                elements.rotorGroup.style.setProperty('--spin-duration', `${duration}s`);
+                elements.rotorGroup.classList.add('spinning');
+                // Reverse spin direction during heavy regen (visual cue)
+                elements.rotorGroup.style.animationDirection = (isRegen && state.brake > 50) ? 'reverse' : 'normal';
+            } else {
+                elements.rotorGroup.classList.remove('spinning');
+            }
+            
+            // Field lines — green during regen
+            const fieldLines = document.querySelectorAll('.field-line');
+            fieldLines.forEach((line, i) => {
+                if (state.isOn && (state.voltage > 0 || isRegen)) {
+                    line.classList.add('active');
+                    line.style.animationDelay = `${i * 0.08}s`;
+                    line.style.stroke = isRegen ? 'rgba(34,197,94,0.5)' : 'rgba(0, 255, 200, 0.35)';
+                    line.style.animationDirection = isRegen ? 'reverse' : 'normal';
+                } else {
+                    line.classList.remove('active');
+                    line.style.stroke = 'rgba(0, 255, 200, 0.35)';
+                }
+            });
+            
+            // Motor SVG glow — cyan = motor, green = generator
+            if (state.isOn) {
+                elements.motorSvg.classList.add('active');
+                if (isRegen) {
+                    elements.motorSvg.classList.add('generator');
+                    elements.motorSvg.style.filter = `drop-shadow(0 0 20px rgba(34,197,94,0.55))`;
+                } else {
+                    elements.motorSvg.classList.remove('generator');
+                    elements.motorSvg.style.filter = `drop-shadow(0 0 ${state.voltage / 25}px rgba(0, 255, 200, 0.25))`;
+                }
+            } else {
+                elements.motorSvg.classList.remove('active');
+                elements.motorSvg.classList.remove('generator');
+                elements.motorSvg.style.filter = 'none';
+            }
+        }
+
+        // Animation loops
+        let rpmInterval, tempInterval, batteryInterval;
+
+        function startAnimationLoops() {
+            // RPM transition — freno regen desacelera las RPM
+            rpmInterval = setInterval(() => {
+                if (!state.isOn) {
+                    state.currentRpm = Math.max(0, state.currentRpm - 150);
+                } else {
+                    const regen = calculateRegen();
+                    const isRegen = regen.active && (state.brake > 0 || state.throttle === 0);
+
+                    if (isRegen) {
+                        // Deceleración proporcional al torque de frenado
+                        const decelRate = (regen.torqueRegen / CONSTANTS.regenMaxTorque) * 180 + 20;
+                        state.currentRpm = Math.max(0, state.currentRpm - decelRate);
+                    } else {
+                        // Las RPM objetivo dependen solo del acelerador y modo.
+                        // El voltaje del bus NO limita las RPM (el inversor regula
+                        // la frecuencia independientemente); sí reduce el par
+                        // disponible (menos voltaje → menos corriente → menos torque),
+                        // lo cual ya se refleja en calculateTorqueAtRpm vía voltageFactor.
+                        const targetRpm = (state.throttle / 100) * CONSTANTS.maxRpm;
+                        const diff = targetRpm - state.currentRpm;
+                        state.currentRpm = Math.max(0, state.currentRpm + diff * 0.08);
+                    }
+                }
+                updateUI();
+                updateTorqueChart();
+            }, 16);
+
+            // Temperature — regen also generates heat (inverter losses)
+            tempInterval = setInterval(() => {
+                if (!state.isOn) {
+                    state.temperature = Math.max(CONSTANTS.baseTemperature, state.temperature - 0.8);
+                } else {
+                    const calc = calculatePhysics();
+                    const regenHeat = calc.isRegenerating ? calc.regen.powerRegen * 0.09 * 0.5 : 0;
+                    const motorHeat = (state.currentRpm / CONSTANTS.maxRpm) * 8 + (calc.power / 150) * 15;
+                    const heatGeneration = motorHeat + regenHeat;
+                    const heatDissipation = 3;
+                    state.temperature = Math.min(CONSTANTS.maxTemperature,
+                        Math.max(CONSTANTS.baseTemperature, state.temperature + heatGeneration - heatDissipation));
+                }
+                updateUI();
+            }, 1000);
+
+            // Battery — regen RECHARGES the battery
+            batteryInterval = setInterval(() => {
+                if (state.isOn) {
+                    const calc = calculatePhysics();
+                    if (calc.isRegenerating && calc.regen.powerCharge > 0) {
+                        // Recarga: suma energía a la batería
+                        const charge = (calc.regen.powerCharge / CONSTANTS.batteryCapacity) * 0.08;
+                        state.batteryLevel = Math.min(100, state.batteryLevel + charge);
+                    } else if (calc.power > 0) {
+                        // Consumo normal
+                        const drain = (calc.power / CONSTANTS.batteryCapacity) * 0.08;
+                        state.batteryLevel = Math.max(0, state.batteryLevel - drain);
+                    }
+                }
+                updateUI();
+            }, 1000);
+        }
+
+        // Event Handlers
+        function handlePowerToggle() {
+            state.isOn = !state.isOn;
+            
+            if (state.isOn) {
+                elements.powerBtn.classList.add('active');
+                elements.logoIcon.classList.add('active');
+                elements.statusValue.classList.remove('off');
+                elements.statusValue.classList.add('on');
+                elements.statusValue.textContent = 'ENCENDIDO';
+                elements.throttleUp.disabled = false;
+                elements.throttleDown.disabled = false;
+                elements.throttleReset.disabled = false;
+                document.getElementById('brakeUp').disabled    = false;
+                document.getElementById('brakeDown').disabled  = false;
+                document.getElementById('brakeReset').disabled = false;
+            } else {
+                state.throttle = 0;
+                state.brake    = 0;
+                elements.powerBtn.classList.remove('active');
+                elements.logoIcon.classList.remove('active');
+                elements.statusValue.classList.remove('on');
+                elements.statusValue.classList.add('off');
+                elements.statusValue.textContent = 'APAGADO';
+                elements.throttleUp.disabled    = true;
+                elements.throttleDown.disabled  = true;
+                elements.throttleReset.disabled = true;
+                document.getElementById('brakeUp').disabled    = true;
+                document.getElementById('brakeDown').disabled  = true;
+                document.getElementById('brakeReset').disabled = true;
+            }
+            
+            updateUI();
+        }
+
+        function handleVoltageChange(e) {
+            state.voltage = parseInt(e.target.value);
+            updateUI();
+        }
+
+        function handleModeChange(mode) {
+            state.mode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.mode-btn.${mode}`).classList.add('active');
+            updateUI();
+        }
+
+        function handleThrottleChange(value) {
+            if (!state.isOn) return;
+            state.throttle = Math.max(0, Math.min(100, value));
+            updateUI();
+        }
+
+        // Throttle pedal interaction
+        let isThrottlePressed = false;
+
+        function initThrottlePedal() {
+            const pedal = elements.throttlePedal;
+            
+            pedal.addEventListener('mousedown', (e) => {
+                if (!state.isOn) return;
+                isThrottlePressed = true;
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isThrottlePressed) {
+                    isThrottlePressed = false;
+                    handleThrottleChange(0);
+                }
+            });
+            
+            pedal.addEventListener('mousemove', (e) => {
+                if (!isThrottlePressed || !state.isOn) return;
+                const rect = pedal.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                const newValue = Math.max(0, Math.min(100, 100 - (y / rect.height) * 100));
+                handleThrottleChange(newValue);
+            });
+
+            // Touch support
+            pedal.addEventListener('touchstart', (e) => {
+                if (!state.isOn) return;
+                isThrottlePressed = true;
+            });
+            
+            document.addEventListener('touchend', () => {
+                if (isThrottlePressed) {
+                    isThrottlePressed = false;
+                    handleThrottleChange(0);
+                }
+            });
+            
+            pedal.addEventListener('touchmove', (e) => {
+                if (!isThrottlePressed || !state.isOn) return;
+                const rect = pedal.getBoundingClientRect();
+                const touch = e.touches[0];
+                const y = touch.clientY - rect.top;
+                const newValue = Math.max(0, Math.min(100, 100 - (y / rect.height) * 100));
+                handleThrottleChange(newValue);
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // GRÁFICO DE TORQUE vs RPM
+        // ══════════════════════════════════════════════════════════════
+        let chartCanvas, chartCtx;
+        const CHART_POINTS = 200; // resolución de la curva
+
+        function buildTorqueCurve(throttle, mode) {
+            const pts = [];
+            for (let i = 0; i <= CHART_POINTS; i++) {
+                const rpm = (i / CHART_POINTS) * CONSTANTS.maxRpm;
+                const torque = calculateTorqueAtRpm(rpm, throttle || 100, mode || 'normal');
+                const omega = (2 * Math.PI * rpm) / 60;
+                const powerKw = (torque * omega) / 1000;
+                pts.push({ rpm, torque, powerKw });
+            }
+            return pts;
+        }
+
+        function drawTorqueChart() {
+            if (!chartCtx) return;
+            const canvas = chartCanvas;
+            const ctx = chartCtx;
+
+            const W = canvas.width;
+            const H = canvas.height;
+            const PAD = { top: 30, right: 80, bottom: 55, left: 65 };
+            const plotW = W - PAD.left - PAD.right;
+            const plotH = H - PAD.top - PAD.bottom;
+
+            ctx.clearRect(0, 0, W, H);
+
+            // ── Background ──
+            ctx.fillStyle = 'rgba(10,10,20,0.95)';
+            ctx.fillRect(0, 0, W, H);
+
+            const maxTorqueScale = 420;
+            const maxPowerScale  = 250;
+
+            function xPx(rpm) { return PAD.left + (rpm / CONSTANTS.maxRpm) * plotW; }
+            function yTorque(t) { return PAD.top + plotH - (t / maxTorqueScale) * plotH; }
+            function yPower(p) { return PAD.top + plotH - (p / maxPowerScale) * plotH; }
+
+            // ── Grid lines ──
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            for (let g = 0; g <= 10; g++) {
+                const x = PAD.left + (g / 10) * plotW;
+                ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, PAD.top + plotH); ctx.stroke();
+            }
+            for (let g = 0; g <= 8; g++) {
+                const y = PAD.top + (g / 8) * plotH;
+                ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + plotW, y); ctx.stroke();
+            }
+
+            // ── Zona 1 / Zona 2 separator (rpmBase) ──
+            const xBase = xPx(CONSTANTS.rpmBase);
+            ctx.strokeStyle = 'rgba(255,200,0,0.4)';
+            ctx.setLineDash([6, 4]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(xBase, PAD.top); ctx.lineTo(xBase, PAD.top + plotH); ctx.stroke();
+            // ── Zona 2 / Zona 3 separator (14000 RPM) ──
+            const xZone3 = xPx(14000);
+            ctx.strokeStyle = 'rgba(239,68,68,0.35)';
+            ctx.beginPath(); ctx.moveTo(xZone3, PAD.top); ctx.lineTo(xZone3, PAD.top + plotH); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // ── Zone labels ──
+            ctx.fillStyle = 'rgba(249,115,22,0.8)';
+            ctx.font = 'bold 11px Segoe UI';
+            ctx.textAlign = 'left';
+            ctx.fillText('① Torque cte.', PAD.left + 6, PAD.top + 18);
+            const xZone2 = xPx(12000);
+            ctx.fillStyle = 'rgba(168,85,247,0.8)';
+            ctx.fillText('② Field Weakening', xBase + 6, PAD.top + 18);
+            ctx.fillStyle = 'rgba(239,68,68,0.8)';
+            ctx.fillText('③ Pérd. hierro', xZone2 + 6, PAD.top + 18);
+
+            // ── Throttle levels: 100%, 75%, 50% ──
+            const levels = [
+                { t: 100, color: '#f97316', label: '100%' },
+                { t: 75,  color: '#eab308', label: '75%'  },
+                { t: 50,  color: '#3b82f6', label: '50%'  },
+            ];
+            for (const lv of levels) {
+                const curve = buildTorqueCurve(lv.t, state.mode);
+                ctx.strokeStyle = lv.color;
+                ctx.lineWidth = lv.t === 100 ? 2.5 : 1.5;
+                ctx.globalAlpha = lv.t === 100 ? 1.0 : 0.55;
+                ctx.beginPath();
+                curve.forEach((p, i) => {
+                    const x = xPx(p.rpm); const y = yTorque(p.torque);
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                // label
+                ctx.fillStyle = lv.color;
+                ctx.font = '10px Segoe UI';
+                ctx.textAlign = 'left';
+                const mid = curve[Math.floor(curve.length * 0.3)];
+                ctx.fillText(lv.label, xPx(mid.rpm) + 2, yTorque(mid.torque) - 6);
+                ctx.globalAlpha = 1.0;
+            }
+
+            // ── Power curve (100% throttle) ──
+            const curve100 = buildTorqueCurve(100, state.mode);
+            ctx.strokeStyle = '#00ffc8';
+            ctx.lineWidth = 1.8;
+            ctx.setLineDash([5, 4]);
+            ctx.globalAlpha = 0.65;
+            ctx.beginPath();
+            curve100.forEach((p, i) => {
+                const x = xPx(p.rpm); const y = yPower(p.powerKw);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1.0;
+
+            // ── Axes ──
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(PAD.left, PAD.top); ctx.lineTo(PAD.left, PAD.top + plotH);
+            ctx.lineTo(PAD.left + plotW, PAD.top + plotH);
+            ctx.stroke();
+
+            // ── X axis labels (RPM) ──
+            ctx.fillStyle = '#888';
+            ctx.font = '11px Courier New';
+            ctx.textAlign = 'center';
+            for (let g = 0; g <= 10; g++) {
+                const rpm = (g / 10) * CONSTANTS.maxRpm;
+                const x = xPx(rpm);
+                ctx.fillText((rpm/1000).toFixed(0)+'k', x, PAD.top + plotH + 18);
+            }
+            ctx.fillStyle = '#aaa';
+            ctx.font = '12px Segoe UI';
+            ctx.fillText('RPM del Motor', PAD.left + plotW / 2, PAD.top + plotH + 40);
+
+            // ── Y axis labels (Torque) ──
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#f97316';
+            ctx.font = '11px Courier New';
+            for (let g = 0; g <= 8; g++) {
+                const t = (g / 8) * maxTorqueScale;
+                ctx.fillText(Math.round(t), PAD.left - 8, yTorque(t) + 4);
+            }
+            ctx.save();
+            ctx.translate(15, PAD.top + plotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#f97316';
+            ctx.font = '12px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('Torque (Nm)', 0, 0);
+            ctx.restore();
+
+            // ── Y axis labels (Power) ──
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#00ffc8';
+            ctx.font = '11px Courier New';
+            for (let g = 0; g <= 5; g++) {
+                const p = (g / 5) * maxPowerScale;
+                ctx.fillText(Math.round(p), PAD.left + plotW + 5, yPower(p) + 4);
+            }
+            ctx.save();
+            ctx.translate(W - 12, PAD.top + plotH / 2);
+            ctx.rotate(Math.PI / 2);
+            ctx.fillStyle = '#00ffc8';
+            ctx.font = '12px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('Potencia (kW)', 0, 0);
+            ctx.restore();
+
+            // Power curve legend
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#00ffc8';
+            ctx.font = '10px Segoe UI';
+            ctx.globalAlpha = 0.8;
+            ctx.fillText('── Potencia (kW)', PAD.left + plotW - 110, PAD.top + 18);
+            ctx.globalAlpha = 1.0;
+
+            // ── Current operating point ──
+            const regen = calculateRegen();
+            const isRegenNow = regen.active && (state.brake > 0 || state.throttle === 0);
+            const displayTorque = isRegenNow
+                ? -regen.torqueRegen  // negative for regen
+                : calculateTorqueAtRpm(state.currentRpm, state.throttle, state.mode);
+
+            if (state.isOn && state.currentRpm > 10) {
+                const px = xPx(state.currentRpm);
+                const py = yTorque(Math.max(0, displayTorque)); // clamp to axis for display
+
+                // Regen indicator: draw below axis
+                if (isRegenNow && regen.torqueRegen > 0) {
+                    // Regen bar below X axis
+                    const regenBarH = Math.min(40, (regen.torqueRegen / CONSTANTS.regenMaxTorque) * 40);
+                    ctx.fillStyle = 'rgba(34,197,94,0.25)';
+                    ctx.fillRect(PAD.left, PAD.top + plotH, plotW, regenBarH);
+                    ctx.fillStyle = 'rgba(34,197,94,0.6)';
+                    ctx.fillRect(px - 6, PAD.top + plotH, 12, regenBarH);
+
+                    // Regen label below axis
+                    ctx.fillStyle = '#22c55e';
+                    ctx.font = 'bold 11px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`⚡ GENERADOR`, px, PAD.top + plotH + regenBarH + 14);
+                    ctx.fillText(`−${regen.torqueRegen.toFixed(0)} Nm  +${regen.powerCharge.toFixed(0)} kW→🔋`, px, PAD.top + plotH + regenBarH + 27);
+                }
+
+                // Crosshair
+                ctx.strokeStyle = isRegenNow ? 'rgba(34,197,94,0.4)' : 'rgba(255,60,60,0.4)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath(); ctx.moveTo(px, PAD.top); ctx.lineTo(px, PAD.top + plotH); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(PAD.left, py); ctx.lineTo(PAD.left + plotW, py); ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Dot glow
+                const dotColor = isRegenNow ? '#22c55e' : '#ff3333';
+                ctx.fillStyle = isRegenNow ? 'rgba(34,197,94,0.3)' : 'rgba(255,50,50,0.3)';
+                ctx.beginPath(); ctx.arc(px, py, 14, 0, 2 * Math.PI); ctx.fill();
+
+                ctx.fillStyle = dotColor;
+                ctx.beginPath(); ctx.arc(px, py, 7, 0, 2 * Math.PI); ctx.fill();
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+
+                // Label
+                const labelX = Math.min(px + 14, PAD.left + plotW - 150);
+                const labelY = Math.max(py - 14, PAD.top + 30);
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(labelX - 3, labelY - 15, 155, isRegenNow ? 50 : 36);
+                ctx.fillStyle = isRegenNow ? '#22c55e' : '#ff6666';
+                ctx.font = 'bold 11px Courier New';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${Math.round(state.currentRpm)} RPM`, labelX, labelY);
+                if (isRegenNow) {
+                    ctx.fillStyle = '#22c55e';
+                    ctx.fillText(`−${regen.torqueRegen.toFixed(1)} Nm (FRENO)`, labelX, labelY + 15);
+                    ctx.fillText(`+${regen.powerCharge.toFixed(0)} kW → batería`, labelX, labelY + 30);
+                } else {
+                    ctx.fillStyle = '#f97316';
+                    const curTorq = calculateTorqueAtRpm(state.currentRpm, state.throttle, state.mode);
+                    ctx.fillText(`${curTorq.toFixed(1)} Nm  |  ${(curTorq * (2*Math.PI*state.currentRpm/60)/1000).toFixed(0)} kW`, labelX, labelY + 17);
+                }
+            }
+        }
+
+        function updateTorqueChart() {
+            if (!chartCanvas) return;
+            chartCanvas.width = chartCanvas.offsetWidth || 800;
+            chartCanvas.height = 320;
+            drawTorqueChart();
+        }
+
+        function initTorqueChart() {
+            chartCanvas = document.getElementById('torqueChart');
+            if (!chartCanvas) return;
+            chartCtx = chartCanvas.getContext('2d');
+            updateTorqueChart();
+            window.addEventListener('resize', updateTorqueChart);
+        }
+
+        function handleBrakeChange(value) {
+            if (!state.isOn) return;
+            state.brake = Math.max(0, Math.min(100, value));
+            // Al frenar, suelto el acelerador automáticamente
+            if (state.brake > 0) state.throttle = 0;
+            updateUI();
+        }
+
+        function initBrakePedal() {
+            const pedal = document.getElementById('brakePedal');
+            if (!pedal) return;
+            let pressed = false;
+
+            pedal.addEventListener('mousedown', () => { if (state.isOn) pressed = true; });
+            document.addEventListener('mouseup', () => {
+                if (pressed) { pressed = false; handleBrakeChange(0); }
+            });
+            pedal.addEventListener('mousemove', (e) => {
+                if (!pressed || !state.isOn) return;
+                const rect = pedal.getBoundingClientRect();
+                handleBrakeChange(Math.max(0, Math.min(100, 100 - ((e.clientY - rect.top) / rect.height) * 100)));
+            });
+            pedal.addEventListener('touchstart', () => { if (state.isOn) pressed = true; });
+            document.addEventListener('touchend', () => {
+                if (pressed) { pressed = false; handleBrakeChange(0); }
+            });
+            pedal.addEventListener('touchmove', (e) => {
+                if (!pressed || !state.isOn) return;
+                const rect  = pedal.getBoundingClientRect();
+                const touch = e.touches[0];
+                handleBrakeChange(Math.max(0, Math.min(100, 100 - ((touch.clientY - rect.top) / rect.height) * 100)));
+            });
+        }
+
+        // Initialize
+        function init() {
+            initMotorSVG();
+            initThrottlePedal();
+            initTorqueChart();
+            startAnimationLoops();
+            
+            // Event listeners
+            elements.powerBtn.addEventListener('click', handlePowerToggle);
+            elements.voltageSlider.addEventListener('input', handleVoltageChange);
+            
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => handleModeChange(btn.dataset.mode));
+            });
+            
+            elements.throttleUp.addEventListener('click', () => handleThrottleChange(state.throttle + 10));
+            elements.throttleDown.addEventListener('click', () => handleThrottleChange(state.throttle - 10));
+            elements.throttleReset.addEventListener('click', () => handleThrottleChange(0));
+
+            // Brake pedal buttons
+            document.getElementById('brakeUp').addEventListener('click', () => handleBrakeChange(state.brake + 10));
+            document.getElementById('brakeDown').addEventListener('click', () => handleBrakeChange(state.brake - 10));
+            document.getElementById('brakeReset').addEventListener('click', () => handleBrakeChange(0));
+
+            // Brake pedal drag interaction (mirrors throttle pedal)
+            initBrakePedal();
+
+            // Regen level buttons
+            document.querySelectorAll('.regen-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.regenLevel = btn.dataset.level;
+                    document.querySelectorAll('.regen-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateUI();
+                });
+            });
+            
+            elements.infoBtn.addEventListener('click', () => {
+                elements.infoPanel.classList.toggle('visible');
+            });
+            
+            updateUI();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+
+</body></html>
